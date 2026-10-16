@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Her Photo Universe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600&family=Caveat:wght@500;700&display=swap">
+<style>
+/* Layout: one full-screen night scene. A gift opens, the photos become a floating 3D world that can be spun and reshaped. */
+:root {
+  --night: #0c1029;
+  --ink: #f4effb;
+  --muted: #a7a9cc;
+  --gold: #ffd58a;
+  --rose: #f7a6b0;
+  --paper: #fbf6ef;
+  --display: "Gloock", Georgia, "Times New Roman", serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { height: 100%; background: var(--night); color: var(--ink); overflow: hidden; }
+body {
+  font-family: var(--body);
+  background:
+    radial-gradient(900px 600px at 50% 45%, #2b2a66 0%, transparent 65%),
+    radial-gradient(700px 500px at 10% 100%, #3e2152 0%, transparent 60%),
+    radial-gradient(700px 500px at 100% 0%, #1d3060 0%, transparent 60%),
+    var(--night);
+  user-select: none; -webkit-user-select: none;
+}
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* Gift intro */
+.intro { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; transition: opacity .8s ease; }
+.intro.gone { opacity: 0; pointer-events: none; }
+.intro-in { display: grid; justify-items: center; gap: 26px; text-align: center; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+.intro .for { font-family: var(--hand); font-size: 28px; color: var(--gold); }
+.gift { position: relative; width: 150px; height: 140px; border: 0; background: none; cursor: pointer; padding: 0; animation: bob 3s ease-in-out infinite; }
+.gift:focus-visible { outline: 2px solid var(--gold); outline-offset: 10px; border-radius: 12px; }
+.box { position: absolute; left: 10px; right: 10px; bottom: 0; height: 92px; border-radius: 8px; background: linear-gradient(160deg, #f7a6b0, #d9708a); box-shadow: 0 20px 50px rgba(247,166,176,.35); }
+.lid { position: absolute; left: 0; right: 0; top: 18px; height: 34px; border-radius: 8px; background: linear-gradient(160deg, #ffc0c8, #e57f98); transition: transform .7s cubic-bezier(.3,1.6,.5,1); transform-origin: 20% 100%; }
+.ribbon-v { position: absolute; left: 50%; width: 20px; margin-left: -10px; top: 18px; bottom: 0; background: var(--gold); }
+.bow { position: absolute; top: -4px; left: 50%; width: 64px; height: 30px; margin-left: -32px; }
+.bow::before, .bow::after { content: ""; position: absolute; top: 4px; width: 28px; height: 22px; border: 6px solid var(--gold); border-radius: 50% 50% 50% 50%; }
+.bow::before { left: 0; transform: rotate(-20deg); }
+.bow::after { right: 0; transform: rotate(20deg); }
+.gift.open .lid, .gift.open .bow { transform: translate(-30px, -90px) rotate(-35deg); opacity: 0; transition: transform .7s ease, opacity .7s ease .2s; }
+.gift.open .bow { transform: translate(-30px, -110px) rotate(-35deg); }
+.intro .tap { color: var(--muted); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; }
+@keyframes bob { 50% { transform: translateY(-10px) rotate(-1.5deg); } }
+
+/* Scene */
+.title {
+  position: fixed; top: calc(18px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 10; text-align: center; pointer-events: none;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  opacity: 0; transform: translateY(-10px); transition: opacity 1.2s ease 1s, transform 1.2s ease 1s;
+}
+.title h1 {
+  margin: 0; font-family: var(--display); font-weight: 400; line-height: 1; letter-spacing: -.01em;
+  font-size: clamp(40px, 10vw, 84px); text-wrap: balance;
+  background: linear-gradient(180deg, #fff 30%, #f8c9cf); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 30px rgba(247,166,176,.35));
+}
+.title p { margin: 6px 0 0; font-family: var(--hand); font-size: clamp(20px, 4.5vw, 28px); color: var(--gold); }
+body.live .title { opacity: 1; transform: none; }
+
+#world { position: fixed; inset: 0; z-index: 5; touch-action: none; cursor: grab; }
+#world:active { cursor: grabbing; }
+.card {
+  position: absolute; left: 0; top: 0; width: var(--w); height: calc(var(--w) * 1.25);
+  padding: 3px; background: var(--paper); border-radius: 3px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.45);
+  will-change: transform, opacity; pointer-events: auto; cursor: pointer;
+}
+.card img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 1px; pointer-events: none; -webkit-user-drag: none; }
+
+.dock {
+  position: fixed; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 10;
+  display: grid; justify-items: center; gap: 10px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  opacity: 0; transition: opacity 1s ease 1.8s; pointer-events: none;
+}
+body.live .dock { opacity: 1; pointer-events: auto; }
+.shapes { display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.shapes button {
+  border: 0; border-radius: 999px; padding: 10px 18px; min-height: 42px; cursor: pointer;
+  font: 600 14px var(--body); color: var(--ink); background: transparent; transition: background .3s, color .3s;
+}
+.shapes button[aria-pressed="true"] { background: var(--gold); color: var(--night); }
+.shapes button:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
+.hint { color: var(--muted); font-size: 12px; letter-spacing: .08em; text-align: center; }
+
+.note {
+  position: fixed; left: 50%; bottom: calc(118px + env(safe-area-inset-bottom, 0px)); z-index: 10; transform: translateX(-50%);
+  font-family: var(--hand); font-size: clamp(24px, 5.5vw, 34px); color: #fff; text-align: center; width: min(80vw, 340px);
+  text-shadow: 0 2px 20px rgba(247,166,176,.8); pointer-events: none; opacity: 0; transition: opacity 1s ease;
+}
+.note.show { opacity: 1; }
+
+/* Viewer */
+.viewer {
+  position: fixed; inset: 0; z-index: 50; background: rgba(6, 8, 22, .95);
+  display: grid; grid-template-rows: auto 1fr auto;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+}
+.vtop { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; padding: 4px 6px; }
+.vstage { position: relative; display: grid; place-items: center; min-height: 0; touch-action: pan-y; }
+.vstage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; box-shadow: 0 30px 80px rgba(0,0,0,.6); transition: opacity .25s, transform .25s; }
+.vstage img.swap { opacity: 0; transform: scale(.97); }
+.vbtns { display: flex; justify-content: center; gap: 12px; padding-top: 12px; }
+.vb { min-width: 48px; min-height: 48px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: var(--ink); font: 600 15px var(--body); cursor: pointer; padding: 0 18px; }
+.vb.gold { background: var(--gold); color: var(--night); border-color: transparent; }
+.vb:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) { .gift { animation: none; } }
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<div class="intro" id="intro">
+  <div class="intro-in">
+    <div class="for">something made just for you</div>
+    <button class="gift" id="gift" type="button" aria-label="Open your gift">
+      <span class="box"></span><span class="ribbon-v"></span><span class="lid"></span><span class="bow"></span>
+    </button>
+    <div class="tap">Tap to open</div>
+  </div>
+</div>
+
+<div class="title"><h1>Happy Birthday</h1><p>a whole universe of you</p></div>
+<div id="world" aria-label="Your photos, floating in 3D. Drag to spin, tap a photo to open it."></div>
+<div class="note" id="note">Every single one of these is my favourite.</div>
+
+<div class="dock">
+  <div class="shapes" role="group" aria-label="Arrange photos">
+    <button type="button" data-shape="planet" aria-pressed="true">Planet</button>
+    <button type="button" data-shape="heart" aria-pressed="false">Heart</button>
+    <button type="button" data-shape="galaxy" aria-pressed="false">Galaxy</button>
+  </div>
+  <div class="hint">Drag to spin · tap a photo to open it</div>
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="vtop"><span id="vcount"></span><button class="vb" id="vclose" type="button">Close</button></div>
+  <div class="vstage" id="vstage"><img id="vimg" alt=""></div>
+  <div class="vbtns">
+    <button class="vb" id="vprev" type="button" aria-label="Previous photo">←</button>
+    <button class="vb gold" id="vnext" type="button" aria-label="Next photo">→</button>
+  </div>
+</div>
+
+<script>
+const N = 89;
+const pad = n => String(n).padStart(2, "0");
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const world = document.getElementById("world");
+
+/* Build cards */
+const cards = [];
+for (let i = 0; i < N; i++) {
+  const c = document.createElement("div");
+  c.className = "card";
+  c.dataset.i = i;
+  c.innerHTML = `<img src="photos/s${pad(i + 1)}.jpg" alt="Photo ${i + 1}" decoding="async">`;
+  world.appendChild(c);
+  cards.push({ el: c, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, sx: 0, sy: 0, sz: 0, delay: Math.random() * 0.5 });
+}
+
+/* Shapes (unit space, roughly -1..1) */
+function planet() {
+  const g = Math.PI * (3 - Math.sqrt(5));
+  return cards.map((_, i) => {
+    const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), t = g * i;
+    return [Math.cos(t) * r, y, Math.sin(t) * r];
+  });
+}
+function heart() {
+  const rings = [[48, 1], [27, .66], [14, .32]];
+  const pts = [];
+  rings.forEach(([n, s], k) => {
+    for (let j = 0; j < n && pts.length < N; j++) {
+      const t = (j / n) * Math.PI * 2 + k * .3;
+      const x = 16 * Math.sin(t) ** 3;
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      pts.push([x / 15 * s, (-y / 15 * s) + .05, (k - 1) * .12 + (Math.random() - .5) * .08]);
+    }
+  });
+  return pts;
+}
+function galaxy() {
+  return cards.map((_, i) => {
+    const arm = i % 3, f = Math.floor(i / 3) / (N / 3);
+    const a = f * Math.PI * 2.4 + arm * (Math.PI * 2 / 3);
+    const r = .18 + f * .95;
+    return [Math.cos(a) * r, (Math.random() - .5) * .14, Math.sin(a) * r];
+  });
+}
+const SHAPES = { planet, heart, galaxy };
+let shape = "planet", morphT = 1;
+
+function setShape(name) {
+  shape = name;
+  const pts = SHAPES[name]();
+  cards.forEach((c, i) => { c.sx = c.x; c.sy = c.y; c.sz = c.z; [c.tx, c.ty, c.tz] = pts[i]; });
+  morphT = 0;
+  document.querySelectorAll(".shapes button").forEach(b => b.setAttribute("aria-pressed", b.dataset.shape === name));
+  document.getElementById("note").classList.toggle("show", false);
+  if (name === "heart") { rx = 0; vy = 0; ry = 0; setTimeout(() => shape === "heart" && document.getElementById("note").classList.add("show"), 1400); }
+  if (name === "galaxy") { rx = -0.55; }
+  if (name === "planet") { rx = -0.25; }
+}
+document.querySelectorAll(".shapes button").forEach(b => b.addEventListener("click", () => setShape(b.dataset.shape)));
+
+/* Rotation + drag */
+let rx = -0.25, ry = 0, vy = still ? 0 : 0.004, vx = 0, dragging = false, moved = 0, lx = 0, ly = 0, live = false;
+world.addEventListener("pointerdown", e => { dragging = true; moved = 0; lx = e.clientX; ly = e.clientY; world.setPointerCapture(e.pointerId); });
+world.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+  moved += Math.abs(dx) + Math.abs(dy);
+  vy = dx * 0.006; vx = dy * 0.004;
+  ry += vy; if (shape !== "heart") rx = Math.max(-1.2, Math.min(1.2, rx + vx));
+});
+world.addEventListener("pointerup", e => {
+  dragging = false;
+  if (moved < 8) {
+    const hit = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains("card"));
+    if (hit) openViewer(+hit.dataset.i);
+  }
+});
+world.addEventListener("pointercancel", () => dragging = false);
+
+const ease = t => 1 - Math.pow(1 - t, 3);
+function frame(t) {
+  const W = innerWidth, H = innerHeight;
+  const R = Math.min(W, H) * (W < 600 ? 0.42 : 0.36);
+  const cw = W < 600 ? 46 : 62;
+  world.style.setProperty("--w", cw + "px");
+  if (morphT < 1) morphT = Math.min(1, morphT + (still ? 1 : 0.012));
+
+  if (!dragging) {
+    if (shape === "heart") { ry += (Math.sin(t / 2200) * 0.35 - ry) * 0.04; }
+    else { vy += ((still ? 0 : 0.004) - vy) * 0.03; ry += vy; }
+  }
+  const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
+  const P = R * 3.2;
+  for (const c of cards) {
+    const k = ease(Math.max(0, Math.min(1, (morphT - c.delay * 0.4) / 0.6)));
+    c.x = c.sx + (c.tx - c.sx) * k; c.y = c.sy + (c.ty - c.sy) * k; c.z = c.sz + (c.tz - c.sz) * k;
+    let x = c.x * cy - c.z * sy, z = c.x * sy + c.z * cy, y = c.y;
+    const y2 = y * cx - z * sx; z = y * sx + z * cx; y = y2;
+    const s = P / (P - z * R);
+    const px = W / 2 + x * R * s - cw / 2, py = H / 2 + 20 + y * R * s - cw * .625;
+    c.el.style.transform = `translate3d(${px.toFixed(1)}px,${py.toFixed(1)}px,0) scale(${(s * (0.75 + z * .15)).toFixed(3)})`;
+    c.el.style.opacity = (0.3 + 0.7 * (z + 1) / 2).toFixed(2);
+    c.el.style.zIndex = Math.round(1000 + z * 500);
+  }
+  if (live) requestAnimationFrame(frame);
+}
+
+/* Open the gift */
+const gift = document.getElementById("gift");
+gift.addEventListener("click", () => {
+  gift.classList.add("open");
+  setTimeout(() => {
+    document.getElementById("intro").classList.add("gone");
+    document.body.classList.add("live");
+    cards.forEach(c => { c.x = c.sx = (Math.random() - .5) * .05; c.y = c.sy = .1; c.z = c.sz = 0; });
+    live = true; setShape("planet"); requestAnimationFrame(frame);
+  }, still ? 50 : 650);
+});
+/* Before opening, park cards out of sight */
+cards.forEach(c => { c.el.style.opacity = 0; });
+
+/* Viewer */
+const viewer = document.getElementById("viewer"), vimg = document.getElementById("vimg"), vcount = document.getElementById("vcount");
+let cur = 0;
+function show(i) {
+  cur = (i + N) % N;
+  vimg.classList.add("swap");
+  const src = `photos/p${pad(cur + 1)}.jpg`, pre = new Image();
+  pre.onload = pre.onerror = () => { vimg.src = src; vimg.alt = `Photo ${cur + 1}`; vimg.classList.remove("swap"); };
+  pre.src = src;
+  vcount.textContent = `${cur + 1} / ${N}`;
+  new Image().src = `photos/p${pad(((cur + 1) % N) + 1)}.jpg`;
+}
+function openViewer(i) { viewer.hidden = false; show(i); document.getElementById("vnext").focus(); }
+function closeViewer() { viewer.hidden = true; }
+document.getElementById("vclose").onclick = closeViewer;
+document.getElementById("vprev").onclick = () => show(cur - 1);
+document.getElementById("vnext").onclick = () => show(cur + 1);
+addEventListener("keydown", e => {
+  if (viewer.hidden) return;
+  if (e.key === "Escape") closeViewer();
+  if (e.key === "ArrowRight") show(cur + 1);
+  if (e.key === "ArrowLeft") show(cur - 1);
+});
+const stage = document.getElementById("vstage");
+let tsx = null, tsy = null;
+stage.addEventListener("touchstart", e => { tsx = e.touches[0].clientX; tsy = e.touches[0].clientY; }, { passive: true });
+stage.addEventListener("touchend", e => {
+  if (tsx === null) return;
+  const dx = e.changedTouches[0].clientX - tsx, dy = e.changedTouches[0].clientY - tsy;
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
+  else if (dy > 90) closeViewer();
+  tsx = null;
+});
+stage.addEventListener("click", e => { if (e.target === stage) closeViewer(); });
+
+/* Sky */
+(function sky() {
+  const c = document.getElementById("sky"), ctx = c.getContext("2d");
+  let stars = [], shoot = null;
+  function size() {
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = Array.from({ length: Math.round(innerWidth * innerHeight / 3800) }, () => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.3 + .2, p: Math.random() * 6.28, s: .5 + Math.random() }));
+  }
+  function f(t) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const s of stars) { ctx.globalAlpha = still ? .6 : .3 + .4 * Math.sin(t / (700 * s.s) + s.p); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill(); }
+    if (!still) {
+      if (!shoot && Math.random() < 0.005) shoot = { x: Math.random() * innerWidth * .8, y: Math.random() * innerHeight * .4, life: 1 };
+      if (shoot) {
+        const g = ctx.createLinearGradient(shoot.x, shoot.y, shoot.x - 120, shoot.y - 50);
+        g.addColorStop(0, `rgba(255,230,180,${shoot.life})`); g.addColorStop(1, "rgba(255,230,180,0)");
+        ctx.globalAlpha = 1; ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(shoot.x, shoot.y); ctx.lineTo(shoot.x - 120, shoot.y - 50); ctx.stroke();
+        shoot.x += 9; shoot.y += 3.8; shoot.life -= .018; if (shoot.life <= 0) shoot = null;
+      }
+      requestAnimationFrame(f);
+    }
+  }
+  size(); addEventListener("resize", size); requestAnimationFrame(f);
+})();
+</script>
+
+</body>
+</html>
