@@ -76,6 +76,12 @@ body.live .title { opacity: 1; transform: none; }
   box-shadow: 0 8px 22px rgba(0,0,0,.45);
   will-change: transform, opacity; pointer-events: auto; cursor: pointer;
 }
+.core {
+  position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; z-index: 1000;
+  background: radial-gradient(circle, rgba(255,244,220,.95) 0%, rgba(255,213,138,.6) 7%, rgba(247,166,176,.28) 20%, rgba(140,120,230,.12) 42%, transparent 70%);
+  mix-blend-mode: screen; opacity: 0; transition: opacity 1.4s ease;
+}
+.core.on { opacity: 1; }
 .card img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 1px; pointer-events: none; -webkit-user-drag: none; }
 
 .dock {
@@ -173,6 +179,11 @@ for (let i = 0; i < N; i++) {
   cards.push({ el: c, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, sx: 0, sy: 0, sz: 0, delay: Math.random() * 0.5 });
 }
 
+/* Glowing galactic core, sits at depth 0 so near cards pass in front and far cards behind */
+const core = document.createElement("div");
+core.className = "core";
+world.appendChild(core);
+
 /* Shapes (unit space, roughly -1..1) */
 function planet() {
   const g = Math.PI * (3 - Math.sqrt(5));
@@ -194,13 +205,29 @@ function heart() {
   });
   return pts;
 }
+/* Spiral galaxy: dense central bulge, two logarithmic arms that fan out and thin with radius, a few stray disk stars */
 function galaxy() {
-  return cards.map((_, i) => {
-    const arm = i % 3, f = Math.floor(i / 3) / (N / 3);
-    const a = f * Math.PI * 2.4 + arm * (Math.PI * 2 / 3);
-    const r = .18 + f * .95;
-    return [Math.cos(a) * r, (Math.random() - .5) * .14, Math.sin(a) * r];
-  });
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 1.5;
+  const pts = [];
+  const bulge = Math.round(N * .16), stray = Math.round(N * .08), armN = N - bulge - stray;
+  for (let i = 0; i < bulge; i++) {
+    const a = rnd() * Math.PI * 2, r = .03 + Math.pow(rnd(), 1.6) * .2;
+    pts.push([Math.cos(a) * r, gauss() * .07 * (1 - r * 2.5), Math.sin(a) * r]);
+  }
+  const b = .32, r0 = .2, rMax = 1.08;
+  for (let i = 0; i < armN; i++) {
+    const arm = i % 2, f = (Math.floor(i / 2) + rnd() * .6) / (armN / 2);
+    const r = r0 + (rMax - r0) * Math.pow(f, .85) + gauss() * .035 * (1 + f);
+    const a = arm * Math.PI + Math.log(r / r0) / b + gauss() * (.12 + f * .14);
+    pts.push([Math.cos(a) * r, gauss() * .025, Math.sin(a) * r]);
+  }
+  for (let i = 0; i < stray; i++) {
+    const a = rnd() * Math.PI * 2, r = .3 + rnd() * .8;
+    pts.push([Math.cos(a) * r, gauss() * .04, Math.sin(a) * r]);
+  }
+  return pts;
 }
 const SHAPES = { planet, heart, galaxy };
 let shape = "planet", morphT = 1;
@@ -213,7 +240,8 @@ function setShape(name) {
   document.querySelectorAll(".shapes button").forEach(b => b.setAttribute("aria-pressed", b.dataset.shape === name));
   document.getElementById("note").classList.toggle("show", false);
   if (name === "heart") { rx = 0; vy = 0; ry = 0; setTimeout(() => shape === "heart" && document.getElementById("note").classList.add("show"), 1400); }
-  if (name === "galaxy") { rx = -0.55; }
+  if (name === "galaxy") { rx = -0.62; }
+  core.classList.toggle("on", name === "galaxy");
   if (name === "planet") { rx = -0.25; }
 }
 document.querySelectorAll(".shapes button").forEach(b => b.addEventListener("click", () => setShape(b.dataset.shape)));
@@ -251,6 +279,9 @@ function frame(t) {
   }
   const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
   const P = R * 3.2;
+  const cs = R * 1.5, flat = Math.max(.28, Math.abs(sx));
+  core.style.width = core.style.height = cs.toFixed(0) + "px";
+  core.style.transform = `translate3d(${(W / 2 - cs / 2).toFixed(1)}px,${(H / 2 + 20 - cs / 2).toFixed(1)}px,0) scaleY(${flat.toFixed(3)})`;
   for (const c of cards) {
     const k = ease(Math.max(0, Math.min(1, (morphT - c.delay * 0.4) / 0.6)));
     c.x = c.sx + (c.tx - c.sx) * k; c.y = c.sy + (c.ty - c.sy) * k; c.z = c.sz + (c.tz - c.sz) * k;
